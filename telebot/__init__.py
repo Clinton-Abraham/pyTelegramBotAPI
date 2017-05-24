@@ -669,6 +669,20 @@ class TeleBot:
         """
         return apihelper.answer_callback_query(self.token, callback_query_id, text, show_alert, url, cache_time)
 
+    def send_invoice(self, chat_id, title, description, invoice_payload, provider_token, currency, prices,
+                     start_parameter,
+                     photo_url=None, photo_size=None, photo_width=None, photo_height=None, need_name=None,
+                     need_phone_number=None, need_email=None, need_shipping_address=None, is_flexible=None,
+                     disable_notification=None, reply_to_message_id=None, reply_markup=None):
+        return types.Message.de_json(
+            apihelper.send_invoice(self.token, chat_id, title, description, invoice_payload, provider_token,
+                                   currency, prices, start_parameter,
+                                   photo_url, photo_size, photo_width, photo_height,
+                                   need_name,
+                                   need_phone_number, need_email, need_shipping_address,
+                                   is_flexible,
+                                   disable_notification, reply_to_message_id, reply_markup))
+
     def register_for_reply(self, message, callback):
         """
         Registers a callback function to be notified when a reply to `message` arrives.

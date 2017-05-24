@@ -544,9 +544,10 @@ def get_game_high_scores(token, user_id, chat_id=None, message_id=None, inline_m
         payload['inline_message_id'] = inline_message_id
     return _make_request(token, method_url, params=payload)
 
+
 # Payments (https://core.telegram.org/bots/api#payments)
 
-def send_invoice(token, chat_id, title, description, invoice_payload, provider_token, currency, prices, start_parameter=None,
+def send_invoice(token, chat_id, title, description, invoice_payload, provider_token, currency, prices, start_parameter,
                  photo_url=None, photo_size=None, photo_width=None, photo_height=None, need_name=None,
                  need_phone_number=None, need_email=None, need_shipping_address=None, is_flexible=None,
                  disable_notification=None, reply_to_message_id=None, reply_markup=None):
@@ -576,9 +577,9 @@ def send_invoice(token, chat_id, title, description, invoice_payload, provider_t
     :return: 
     """
     method_url = r'sendInvoice'
-    payload = {'chat_id': chat_id, 'title': title, 'description': description, 'payload': invoice_payload, 'provider_token': provider_token, 'currency': currency, 'prices': prices}
-    if start_parameter:
-        payload['start_parameter'] = start_parameter
+    payload = {'chat_id': chat_id, 'title': title, 'description': description, 'payload': invoice_payload,
+               'provider_token': provider_token, 'currency': currency, 'prices': _convert_markup(prices),
+               'start_parameter': start_parameter}
     if photo_url:
         payload['photo_url'] = photo_url
     if photo_size:
@@ -602,7 +603,7 @@ def send_invoice(token, chat_id, title, description, invoice_payload, provider_t
     if reply_to_message_id:
         payload['reply_to_message_id'] = reply_to_message_id
     if reply_markup:
-        payload['reply_markup'] = reply_markup
+        payload['reply_markup'] = _convert_markup(reply_markup)
     return _make_request(token, method_url, params=payload)
 
 
