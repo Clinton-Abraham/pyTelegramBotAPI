@@ -26,6 +26,7 @@
     * [Using web hooks](#using-web-hooks)
     * [Logging](#logging)
     * [Proxy](#proxy)
+  * [New in library](#new-in-library)
   * [F.A.Q.](#faq)
     * [Bot 2.0](#bot-20)
     * [How can I distinguish a User and a GroupChat in message.chat?](#how-can-i-distinguish-a-user-and-a-groupchat-in-messagechat)
@@ -124,7 +125,7 @@ To start the bot, simply open up a terminal and enter `python echo_bot.py` to ru
 All types are defined in types.py. They are all completely in line with the [Telegram API's definition of the types](https://core.telegram.org/bots/api#available-types), except for the Message's `from` field, which is renamed to `from_user` (because `from` is a Python reserved token). Thus, attributes such as `message_id` can be accessed directly with `message.message_id`. Note that `message.chat` can be either an instance of `User` or `GroupChat` (see [How can I distinguish a User and a GroupChat in message.chat?](#how-can-i-distinguish-a-user-and-a-groupchat-in-messagechat)).
 
 The Message object also has a `content_type`attribute, which defines the type of the Message. `content_type` can be one of the following strings:
-`text`, `audio`, `document`, `photo`, `sticker`, `video`, `video_note`, `voice`, `location`, `contact`, `new_chat_member`, `left_chat_member`, `new_chat_title`, `new_chat_photo`, `delete_chat_photo`, `group_chat_created`, `supergroup_chat_created`, `channel_chat_created`, `migrate_to_chat_id`, `migrate_from_chat_id`, `pinned_message`.
+`text`, `audio`, `document`, `photo`, `sticker`, `video`, `video_note`, `voice`, `location`, `contact`, `new_chat_members`, `left_chat_member`, `new_chat_title`, `new_chat_photo`, `delete_chat_photo`, `group_chat_created`, `supergroup_chat_created`, `channel_chat_created`, `migrate_to_chat_id`, `migrate_from_chat_id`, `pinned_message`.
 
 You can use some types in one function. Example:
 
@@ -234,8 +235,8 @@ tb = telebot.TeleBot(TOKEN)	#create a new Telegram Bot object
 # - none_stop: True/False (default False) - Don't stop polling when receiving an error from the Telegram servers
 # - interval: True/False (default False) - The interval between polling requests
 #           Note: Editing this parameter harms the bot's response time
-# - block: True/False (default True) - Blocks upon calling this function
-tb.polling(none_stop=False, interval=0, block=True)
+# - timeout: integer (default 20) - Timeout in seconds for long polling.
+tb.polling(none_stop=False, interval=0, timeout=20)
 
 # getMe
 user = tb.get_me()
@@ -291,8 +292,8 @@ tb.send_video(chat_id, "FILEID")
 
 # sendVideoNote
 videonote = open('/tmp/videonote.mp4', 'rb')
-tb.send_video(chat_id, videonote)
-tb.send_video(chat_id, "FILEID")
+tb.send_video_note(chat_id, videonote)
+tb.send_video_note(chat_id, "FILEID")
 
 # sendLocation
 tb.send_location(chat_id, lat, lon)
@@ -500,18 +501,19 @@ You can use proxy for request. `apihelper.proxy` object will use by call `reques
 ```python
 from telebot import apihelper
 
-apihelper.proxy = {'http', 'http://10.10.1.10:3128'}
+apihelper.proxy = {'http':'http://10.10.1.10:3128'}
 ```
 
-If you want to use socket5 proxy you need install dependency `pip install requests[socks]`.
+If you want to use socket5 proxy you need install dependency `pip install requests[socks]` and make sure, that you have the latest version of `gunicorn`, `PySocks`, `pyTelegramBotAPI`, `requests` and `urllib3`.
 
 ```python
-proxies = {
-    'http': 'socks5://user:pass@host:port',
-    'https': 'socks5://user:pass@host:port'
-}
+apihelper.proxy = {'https':'socks5://userproxy:password@proxy_address:port'}
 ```
 
+
+## New in library
+
+06.06.2019 - Добавленна поддержка опросов (Poll). Добавлены функции send_poll, stop_poll
 
 ## F.A.Q.
 
@@ -527,16 +529,16 @@ Telegram Bot API support new type Chat for message.chat.
 - Check the ```type``` attribute in ```Chat``` object:
 -
 ```python
-if message.chat.type == “private”:
+if message.chat.type == "private":
 	# private chat message
 
-if message.chat.type == “group”:
+if message.chat.type == "group":
 	# group chat message
 
-if message.chat.type == “supergroup”:
+if message.chat.type == "supergroup":
 	# supergroup chat message
 
-if message.chat.type == “channel”:
+if message.chat.type == "channel":
 	# channel message
 
 ```
@@ -579,6 +581,22 @@ Get help. Discuss. Chat.
 * [EmaProject](https://github.com/halkliff/emaproject) by [*halkliff*](https://github.com/halkliff) - Ema - Eastern Media Assistant was made thinking on the ease-to-use feature. Coding here is simple, as much as is fast and powerful.
 * [filmratingbot](http://t.me/filmratingbot)([source](https://github.com/jcolladosp/film-rating-bot)) by [*jcolladosp*](https://github.com/jcolladosp) - Telegram bot using the Python API that gets films rating from IMDb and metacritic
 * [you2mp3bot](http://t.me/you2mp3bot)([link](https://storebot.me/bot/you2mp3bot)) - This bot can convert a Youtube video to Mp3. All you need is send the URL video.
-* [areajugonesbot](http://t.me/areajugonesbot)([link](http://t.me/areajugonesbot)) - The areajugonesbot sends news published on the videogames blog Areajugones to Telegram.
+* [Send2Kindlebot](http://t.me/Send2KindleBot) ([source](https://github.com/GabrielRF/Send2KindleBot)) by *GabrielRF* - Send to Kindle service.
+* [RastreioBot](http://t.me/RastreioBot) ([source](https://github.com/GabrielRF/RastreioBot)) by *GabrielRF* - Bot used to track packages on the Brazilian Mail Service.
+* [filex_bot](http://t.me/filex_bot)([link](https://github.com/victor141516/FileXbot-telegram))
+* [Spbu4UBot](http://t.me/Spbu4UBot)([link](https://github.com/EeOneDown/spbu4u)) by *EeOneDown* - Bot with timetables for SPbU students.
+* [SmartySBot](http://t.me/ZDU_bot)([link](https://github.com/0xVK/SmartySBot)) by *0xVK* - Telegram timetable bot, for Zhytomyr Ivan Franko State University students.
+* [yandex_music_bot](http://t.me/yandex_music_bot)- Downloads tracks/albums/public playlists from Yandex.Music streaming service for free.
+* [LearnIt](https://t.me/LearnItbot)([link](https://github.com/tiagonapoli/LearnIt)) - A Telegram Bot created to help people to memorize other languages’ vocabulary.
+* [MusicQuiz_bot](https://t.me/MusicQuiz_bot) by [Etoneja](https://github.com/Etoneja) - Listen to audiosamles and try to name the performer of the song.
+* [Bot-Telegram-Shodan ](https://github.com/rubenleon/Bot-Telegram-Shodan) by [rubenleon](https://github.com/rubenleon)
+* [MandangoBot](https://t.me/MandangoBot) by @Alvaricias - Bot for managing Marvel Strike Force alliances (only in spanish, atm).
+* [VigoBusTelegramBot](https://t.me/vigobusbot) ([GitHub](https://github.com/Pythoneiro/VigoBus-TelegramBot)) - Bot that provides buses coming to a certain stop and their remaining time for the city of Vigo (Galicia - Spain)
+* [kaishnik-bot](https://t.me/kaishnik_bot) ([source](https://github.com/airatk/kaishnik-bot)) by *airatk* - bot which shows all the necessary information to KNTRU-KAI students.
+* [Creation Date](https://t.me/creationdatebot) by @karipov - interpolates account creation dates based on telegram given ID’s
+* [m0xbot](https://t.me/m0xbot) by [kor0p](https://github.com/kor0p) - tic-tac-toe.  
+* [kboardbot](https://t.me/kboardbot) by [kor0p](https://github.com/kor0p) - inline switches keyboard layout (English, Hebrew, Ukrainian, Russian).  
+* [Robbie](https://t.me/romdeliverybot) ([source](https://github.com/FacuM/romdeliverybot_support)) by @FacuM - Support Telegram bot for developers and maintainers.
+* [AsadovBot](https://t.me/asadov_bot) ([source])(https://github.com/desexcile/BotApi)) by @DesExcile - Сatalog of poems by Eduard Asadov.
 
 Want to have your bot listed here? Send a Telegram message to @eternnoir or @pevdh.

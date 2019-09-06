@@ -10,7 +10,7 @@ import six
 from telebot import util
 
 
-class JsonSerializable:
+class JsonSerializable(object):
     """
     Subclasses of this class are guaranteed to be able to be converted to JSON format.
     All subclasses of this class must override to_json.
@@ -26,7 +26,7 @@ class JsonSerializable:
         raise NotImplementedError
 
 
-class Dictionaryable:
+class Dictionaryable(object):
     """
     Subclasses of this class are guaranteed to be able to be converted to dictionary.
     All subclasses of this class must override to_dic.
@@ -42,7 +42,7 @@ class Dictionaryable:
         raise NotImplementedError
 
 
-class JsonDeserializable:
+class JsonDeserializable(object):
     """
     Subclasses of this class are guaranteed to be able to be created from a json-style dict or json formatted string.
     All subclasses of this class must override de_json.
@@ -127,7 +127,6 @@ class Update(JsonDeserializable):
     def __init__(self, update_id, message, edited_message, channel_post, edited_channel_post, inline_query,
                  chosen_inline_result, callback_query, shipping_query, pre_checkout_query):
         self.update_id = update_id
-        self.edited_message = edited_message
         self.message = message
         self.edited_message = edited_message
         self.channel_post = channel_post
@@ -177,14 +176,16 @@ class User(JsonDeserializable):
     def de_json(cls, json_string):
         obj = cls.check_json(json_string)
         id = obj['id']
+        is_bot = obj['is_bot']
         first_name = obj['first_name']
         last_name = obj.get('last_name')
         username = obj.get('username')
         language_code = obj.get('language_code')
-        return cls(id, first_name, last_name, username, language_code)
+        return cls(id, is_bot, first_name, last_name, username, language_code)
 
-    def __init__(self, id, first_name, last_name=None, username=None, language_code=None):
+    def __init__(self, id, is_bot, first_name, last_name=None, username=None, language_code=None):
         self.id = id
+        self.is_bot = is_bot
         self.first_name = first_name
         self.username = username
         self.last_name = last_name
@@ -220,11 +221,17 @@ class Chat(JsonDeserializable):
             photo = ChatPhoto.de_json(obj['photo'])
         description = obj.get('description')
         invite_link = obj.get('invite_link')
+        pinned_message = None
+        if 'pinned_message' in obj:
+            pinned_message = Message.de_json(obj['pinned_message'])
+        sticker_set_name = obj.get('sticker_set_name')
+        can_set_sticker_set = obj.get('can_set_sticker_set')
         return cls(id, type, title, username, first_name, last_name, all_members_are_administrators,
-                   photo, description, invite_link)
+                   photo, description, invite_link, pinned_message, sticker_set_name, can_set_sticker_set)
 
     def __init__(self, id, type, title=None, username=None, first_name=None, last_name=None,
-                 all_members_are_administrators=None, photo=None, description=None, invite_link=None):
+                 all_members_are_administrators=None, photo=None, description=None, invite_link=None,
+                 pinned_message=None, sticker_set_name=None, can_set_sticker_set=None):
         self.type = type
         self.last_name = last_name
         self.first_name = first_name
@@ -235,6 +242,9 @@ class Chat(JsonDeserializable):
         self.photo = photo
         self.description = description
         self.invite_link = invite_link
+        self.pinned_message = pinned_message
+        self.sticker_set_name = sticker_set_name
+        self.can_set_sticker_set = can_set_sticker_set
 
 
 class Message(JsonDeserializable):
@@ -255,17 +265,25 @@ class Message(JsonDeserializable):
             opts['forward_from_chat'] = Chat.de_json(obj['forward_from_chat'])
         if 'forward_from_message_id' in obj:
             opts['forward_from_message_id'] = obj.get('forward_from_message_id')
+        if 'forward_signature' in obj:
+            opts['forward_signature'] = obj.get('forward_signature')
         if 'forward_date' in obj:
             opts['forward_date'] = obj.get('forward_date')
         if 'reply_to_message' in obj:
             opts['reply_to_message'] = Message.de_json(obj['reply_to_message'])
         if 'edit_date' in obj:
             opts['edit_date'] = obj.get('edit_date')
+        if 'media_group_id' in obj:
+            opts['media_group_id'] = obj.get('media_group_id')
+        if 'author_signature' in obj:
+            opts['author_signature'] = obj.get('author_signature')
         if 'text' in obj:
             opts['text'] = obj['text']
             content_type = 'text'
         if 'entities' in obj:
             opts['entities'] = Message.parse_entities(obj['entities'])
+        if 'caption_entities' in obj:
+            opts['caption_entities'] = Message.parse_entities(obj['caption_entities'])
         if 'audio' in obj:
             opts['audio'] = Audio.de_json(obj['audio'])
             content_type = 'audio'
@@ -316,29 +334,44 @@ class Message(JsonDeserializable):
             content_type = 'left_chat_member'
         if 'new_chat_title' in obj:
             opts['new_chat_title'] = obj['new_chat_title']
+            content_type = 'new_chat_title'
         if 'new_chat_photo' in obj:
             opts['new_chat_photo'] = Message.parse_photo(obj['new_chat_photo'])
+            content_type = 'new_chat_photo'
         if 'delete_chat_photo' in obj:
             opts['delete_chat_photo'] = obj['delete_chat_photo']
+            content_type = 'delete_chat_photo'
         if 'group_chat_created' in obj:
             opts['group_chat_created'] = obj['group_chat_created']
+            content_type = 'group_chat_created'
         if 'supergroup_chat_created' in obj:
             opts['supergroup_chat_created'] = obj['supergroup_chat_created']
+            content_type = 'supergroup_chat_created'
         if 'channel_chat_created' in obj:
             opts['channel_chat_created'] = obj['channel_chat_created']
+            content_type = 'channel_chat_created'
         if 'migrate_to_chat_id' in obj:
             opts['migrate_to_chat_id'] = obj['migrate_to_chat_id']
+            content_type = 'migrate_to_chat_id'
         if 'migrate_from_chat_id' in obj:
             opts['migrate_from_chat_id'] = obj['migrate_from_chat_id']
+            content_type = 'migrate_from_chat_id'
         if 'pinned_message' in obj:
             opts['pinned_message'] = Message.de_json(obj['pinned_message'])
+            content_type = 'pinned_message'
         if 'invoice' in obj:
             opts['invoice'] = Invoice.de_json(obj['invoice'])
             content_type = 'invoice'
         if 'successful_payment' in obj:
             opts['successful_payment'] = SuccessfulPayment.de_json(obj['successful_payment'])
             content_type = 'successful_payment'
-        return cls(message_id, from_user, date, chat, content_type, opts)
+        if 'connected_website' in obj:
+            opts['connected_website'] = obj['connected_website']
+            content_type = 'connected_website'
+        if 'poll' in obj:
+            opts['poll'] = Poll.de_json(obj['poll'])
+            content_type = 'poll'
+        return cls(message_id, from_user, date, chat, content_type, opts, json_string)
 
     @classmethod
     def parse_chat(cls, chat):
@@ -361,7 +394,7 @@ class Message(JsonDeserializable):
             ret.append(MessageEntity.de_json(me))
         return ret
 
-    def __init__(self, message_id, from_user, date, chat, content_type, options):
+    def __init__(self, message_id, from_user, date, chat, content_type, options, json_string):
         self.content_type = content_type
         self.message_id = message_id
         self.from_user = from_user
@@ -372,8 +405,11 @@ class Message(JsonDeserializable):
         self.forward_date = None
         self.reply_to_message = None
         self.edit_date = None
+        self.media_group_id = None
+        self.author_signature = None
         self.text = None
         self.entities = None
+        self.caption_entities = None
         self.audio = None
         self.document = None
         self.photo = None
@@ -399,8 +435,75 @@ class Message(JsonDeserializable):
         self.pinned_message = None
         self.invoice = None
         self.successful_payment = None
+        self.connected_website = None
         for key in options:
             setattr(self, key, options[key])
+        self.json = json_string
+
+    def __html_text(self, text, entities):
+        """
+        Author: @sviat9440
+        Message: "*Test* parse _formatting_, [url](https://example.com), [text_mention](tg://user?id=123456) and mention @username"
+
+        Example:
+            message.html_text
+            >> "<b>Test</b> parse <i>formatting</i>, <a href=\"https://example.com\">url</a>, <a href=\"tg://user?id=123456\">text_mention</a> and mention @username"
+
+        Cusom subs:
+            You can customize the substitutes. By default, there is no substitute for the entities: hashtag, bot_command, email. You can add or modify substitute an existing entity.
+        Example:
+            message.custom_subs = {"bold": "<strong class=\"example\">{text}</strong>", "italic": "<i class=\"example\">{text}</i>", "mention": "<a href={url}>{text}</a>"}
+            message.html_text
+            >> "<strong class=\"example\">Test</strong> parse <i class=\"example\">formatting</i>, <a href=\"https://example.com\">url</a> and <a href=\"tg://user?id=123456\">text_mention</a> and mention <a href=\"https://t.me/username\">@username</a>"
+        """
+
+        if not entities:
+            return text
+        _subs = {
+            "bold"     : "<b>{text}</b>",
+            "italic"   : "<i>{text}</i>",
+            "pre"      : "<pre>{text}</pre>",
+            "code"     : "<code>{text}</code>",
+            "url"      : "<a href=\"{url}\">{text}</a>",
+            "text_link": "<a href=\"{url}\">{text}</a>"
+        }
+        if hasattr(self, "custom_subs"):
+            for type in self.custom_subs:
+                _subs[type] = self.custom_subs[type]
+        utf16_text = text.encode("utf-16-le")
+        html_text = ""
+
+        def func(text, type=None, url=None, user=None):
+            text = text.decode("utf-16-le")
+            if type == "text_mention":
+                type = "url"
+                url = "tg://user?id={0}".format(user.id)
+            elif type == "mention":
+                url = "https://t.me/{0}".format(text[1:])
+            if not type or not _subs.get(type):
+                return text
+            subs = _subs.get(type)
+            text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            return subs.format(text=text, url=url)
+
+        offset = 0
+        for entity in entities:
+            if entity.offset > offset:
+                html_text += func(utf16_text[offset * 2 : entity.offset * 2])
+                offset = entity.offset
+            html_text += func(utf16_text[offset * 2 : (offset + entity.length) * 2], entity.type, entity.url, entity.user)
+            offset += entity.length
+        if offset * 2 < len(utf16_text):
+            html_text += func(utf16_text[offset * 2:])
+        return html_text
+
+    @property
+    def html_text(self):
+        return self.__html_text(self.text, self.entities)
+
+    @property
+    def html_caption(self):
+        return self.__html_text(self.caption, self.caption_entities)
 
 
 class MessageEntity(JsonDeserializable):
@@ -497,29 +600,6 @@ class Document(JsonDeserializable):
         self.thumb = thumb
         self.file_name = file_name
         self.mime_type = mime_type
-        self.file_size = file_size
-
-
-class Sticker(JsonDeserializable):
-    @classmethod
-    def de_json(cls, json_string):
-        obj = cls.check_json(json_string)
-        file_id = obj['file_id']
-        width = obj['width']
-        height = obj['height']
-        thumb = None
-        if 'thumb' in obj:
-            thumb = PhotoSize.de_json(obj['thumb'])
-        emoji = obj.get('emoji')
-        file_size = obj.get('file_size')
-        return cls(file_id, width, height, thumb, emoji, file_size)
-
-    def __init__(self, file_id, width, height, thumb, emoji=None, file_size=None):
-        self.file_id = file_id
-        self.width = width
-        self.height = height
-        self.thumb = thumb
-        self.emoji = emoji
         self.file_size = file_size
 
 
@@ -808,9 +888,30 @@ class InlineKeyboardMarkup(Dictionaryable, JsonSerializable):
         return json_dict
 
 
+class LoginUrl(JsonSerializable):
+    def __init__(self, url, forward_text=None, bot_username=None, request_write_access=None):
+        self.url = url
+        self.forward_text = forward_text
+        self.bot_username = bot_username
+        self.request_write_access = request_write_access
+
+    def to_json(self):
+        return json.dumps(self.to_dic())
+
+    def to_dic(self):
+        json_dic = {'url': self.url}
+        if self.forward_text:
+            json_dic['forward_text'] = self.forward_text
+        if self.bot_username:
+            json_dic['bot_username'] = self.bot_username
+        if self.request_write_access:
+            json_dic['request_write_access'] = self.request_write_access
+        return json_dic
+
+
 class InlineKeyboardButton(JsonSerializable):
     def __init__(self, text, url=None, callback_data=None, switch_inline_query=None,
-                 switch_inline_query_current_chat=None, callback_game=None, pay=None):
+                 switch_inline_query_current_chat=None, callback_game=None, pay=None, login_url=None):
         self.text = text
         self.url = url
         self.callback_data = callback_data
@@ -818,6 +919,7 @@ class InlineKeyboardButton(JsonSerializable):
         self.switch_inline_query_current_chat = switch_inline_query_current_chat
         self.callback_game = callback_game
         self.pay = pay
+        self.login_url = login_url
 
     def to_json(self):
         return json.dumps(self.to_dic())
@@ -836,6 +938,8 @@ class InlineKeyboardButton(JsonSerializable):
             json_dic['callback_game'] = self.callback_game
         if self.pay is not None:
             json_dic['pay'] = self.pay
+        if self.login_url is not None:
+            json_dic['login_url'] = self.login_url.to_dic()
         return json_dic
 
 
@@ -902,8 +1006,8 @@ class ChatMember(JsonDeserializable):
                    can_send_messages, can_send_media_messages, can_send_other_messages, can_add_web_page_previews)
 
     def __init__(self, user, status, until_date, can_be_edited, can_change_info, can_post_messages, can_edit_messages,
-                   can_delete_messages, can_invite_users, can_restrict_members, can_pin_messages, can_promote_members,
-                   can_send_messages, can_send_media_messages, can_send_other_messages, can_add_web_page_previews):
+                 can_delete_messages, can_invite_users, can_restrict_members, can_pin_messages, can_promote_members,
+                 can_send_messages, can_send_media_messages, can_send_other_messages, can_add_web_page_previews):
         self.user = user
         self.status = status
         self.until_date = until_date
@@ -920,6 +1024,7 @@ class ChatMember(JsonDeserializable):
         self.can_send_media_messages = can_send_media_messages
         self.can_send_other_messages = can_send_other_messages
         self.can_add_web_page_previews = can_add_web_page_previews
+
 
 # InlineQuery
 
@@ -971,12 +1076,15 @@ class InputTextMessageContent(Dictionaryable):
 
 
 class InputLocationMessageContent(Dictionaryable):
-    def __init__(self, latitude, longitude):
+    def __init__(self, latitude, longitude, live_period=None):
         self.latitude = latitude
         self.longitude = longitude
+        self.live_period = live_period
 
     def to_dic(self):
         json_dic = {'latitude': self.latitude, 'longitude': self.longitude}
+        if self.live_period:
+            json_dic['live_period'] = self.live_period
         return json_dic
 
 
@@ -990,7 +1098,7 @@ class InputVenueMessageContent(Dictionaryable):
 
     def to_dic(self):
         json_dic = {'latitude': self.latitude, 'longitude': self.longitude, 'title': self.title,
-                    'address': self.address}
+                    'address' : self.address}
         if self.foursquare_id:
             json_dic['foursquare_id'] = self.foursquare_id
         return json_dic
@@ -1089,7 +1197,7 @@ class InlineQueryResultArticle(JsonSerializable):
 
 class InlineQueryResultPhoto(JsonSerializable):
     def __init__(self, id, photo_url, thumb_url, photo_width=None, photo_height=None, title=None,
-                 description=None, caption=None, reply_markup=None, input_message_content=None):
+                 description=None, caption=None, parse_mode=None, reply_markup=None, input_message_content=None):
         """
         Represents a link to a photo.
         :param id: Unique identifier for this result, 1-64 bytes
@@ -1100,6 +1208,8 @@ class InlineQueryResultPhoto(JsonSerializable):
         :param title: Title for the result.
         :param description: Short description of the result.
         :param caption: Caption of the photo to be sent, 0-200 characters.
+        :param parse_mode: Send Markdown or HTML, if you want Telegram apps to show bold, italic, fixed-width text or
+        inline URLs in the media caption.
         :param reply_markup: InlineKeyboardMarkup : Inline keyboard attached to the message
         :param input_message_content: InputMessageContent : Content of the message to be sent instead of the photo
         :return:
@@ -1113,6 +1223,7 @@ class InlineQueryResultPhoto(JsonSerializable):
         self.title = title
         self.description = description
         self.caption = caption
+        self.parse_mode = parse_mode
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
 
@@ -1128,6 +1239,8 @@ class InlineQueryResultPhoto(JsonSerializable):
             json_dict['description'] = self.description
         if self.caption:
             json_dict['caption'] = self.caption
+        if self.parse_mode:
+            json_dict['parse_mode'] = self.parse_mode
         if self.reply_markup:
             json_dict['reply_markup'] = self.reply_markup.to_dic()
         if self.input_message_content:
@@ -1184,7 +1297,7 @@ class InlineQueryResultGif(JsonSerializable):
 
 class InlineQueryResultMpeg4Gif(JsonSerializable):
     def __init__(self, id, mpeg4_url, thumb_url, mpeg4_width=None, mpeg4_height=None, title=None, caption=None,
-                 reply_markup=None, input_message_content=None, mpeg4_duration=None):
+                 parse_mode=None, reply_markup=None, input_message_content=None, mpeg4_duration=None):
         """
         Represents a link to a video animation (H.264/MPEG-4 AVC video without sound).
         :param id: Unique identifier for this result, 1-64 bytes
@@ -1194,6 +1307,8 @@ class InlineQueryResultMpeg4Gif(JsonSerializable):
         :param mpeg4_height: Video height
         :param title: Title for the result
         :param caption: Caption of the MPEG-4 file to be sent, 0-200 characters
+        :param parse_mode: Send Markdown or HTML, if you want Telegram apps to show bold, italic, fixed-width text
+        or inline URLs in the media caption.
         :param reply_markup: InlineKeyboardMarkup : Inline keyboard attached to the message
         :param input_message_content: InputMessageContent : Content of the message to be sent instead of the photo
         :return:
@@ -1206,6 +1321,7 @@ class InlineQueryResultMpeg4Gif(JsonSerializable):
         self.thumb_url = thumb_url
         self.title = title
         self.caption = caption
+        self.parse_mode = parse_mode
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
         self.mpeg4_duration = mpeg4_duration
@@ -1220,6 +1336,8 @@ class InlineQueryResultMpeg4Gif(JsonSerializable):
             json_dict['title'] = self.title
         if self.caption:
             json_dict['caption'] = self.caption
+        if self.parse_mode:
+            json_dict['parse_mode'] = self.parse_mode
         if self.reply_markup:
             json_dict['reply_markup'] = self.reply_markup.to_dic()
         if self.input_message_content:
@@ -1231,8 +1349,8 @@ class InlineQueryResultMpeg4Gif(JsonSerializable):
 
 class InlineQueryResultVideo(JsonSerializable):
     def __init__(self, id, video_url, mime_type, thumb_url, title,
-                 caption=None, video_width=None, video_height=None, video_duration=None, description=None,
-                 reply_markup=None, input_message_content=None):
+                 caption=None, parse_mode=None, video_width=None, video_height=None, video_duration=None,
+                 description=None, reply_markup=None, input_message_content=None):
         """
         Represents link to a page containing an embedded video player or a video file.
         :param id: Unique identifier for this result, 1-64 bytes
@@ -1240,6 +1358,8 @@ class InlineQueryResultVideo(JsonSerializable):
         :param mime_type: Mime type of the content of video url, “text/html” or “video/mp4”
         :param thumb_url: URL of the thumbnail (jpeg only) for the video
         :param title: Title for the result
+        :param parse_mode: Send Markdown or HTML, if you want Telegram apps to show bold, italic, fixed-width text or
+        inline URLs in the media caption.
         :param video_width: Video width
         :param video_height: Video height
         :param video_duration: Video duration in seconds
@@ -1256,6 +1376,7 @@ class InlineQueryResultVideo(JsonSerializable):
         self.thumb_url = thumb_url
         self.title = title
         self.caption = caption
+        self.parse_mode = parse_mode
         self.description = description
         self.input_message_content = input_message_content
         self.reply_markup = reply_markup
@@ -1273,6 +1394,8 @@ class InlineQueryResultVideo(JsonSerializable):
             json_dict['description'] = self.description
         if self.caption:
             json_dict['caption'] = self.caption
+        if self.parse_mode:
+            json_dict['parse_mode'] = self.parse_mode
         if self.reply_markup:
             json_dict['reply_markup'] = self.reply_markup.to_dic()
         if self.input_message_content:
@@ -1281,13 +1404,14 @@ class InlineQueryResultVideo(JsonSerializable):
 
 
 class InlineQueryResultAudio(JsonSerializable):
-    def __init__(self, id, audio_url, title, caption=None, performer=None, audio_duration=None, reply_markup=None,
-                 input_message_content=None):
+    def __init__(self, id, audio_url, title, caption=None, parse_mode=None, performer=None, audio_duration=None,
+                 reply_markup=None, input_message_content=None):
         self.type = 'audio'
         self.id = id
         self.audio_url = audio_url
         self.title = title
         self.caption = caption
+        self.parse_mode = parse_mode
         self.performer = performer
         self.audio_duration = audio_duration
         self.reply_markup = reply_markup
@@ -1297,6 +1421,8 @@ class InlineQueryResultAudio(JsonSerializable):
         json_dict = {'type': self.type, 'id': self.id, 'audio_url': self.audio_url, 'title': self.title}
         if self.caption:
             json_dict['caption'] = self.caption
+        if self.parse_mode:
+            json_dict['parse_mode'] = self.parse_mode
         if self.performer:
             json_dict['performer'] = self.performer
         if self.audio_duration:
@@ -1309,13 +1435,14 @@ class InlineQueryResultAudio(JsonSerializable):
 
 
 class InlineQueryResultVoice(JsonSerializable):
-    def __init__(self, id, voice_url, title, caption=None, performer=None, voice_duration=None, reply_markup=None,
-                 input_message_content=None):
+    def __init__(self, id, voice_url, title, caption=None, parse_mode=None, performer=None, voice_duration=None,
+                 reply_markup=None, input_message_content=None):
         self.type = 'voice'
         self.id = id
         self.voice_url = voice_url
         self.title = title
         self.caption = caption
+        self.parse_mode = parse_mode
         self.performer = performer
         self.voice_duration = voice_duration
         self.reply_markup = reply_markup
@@ -1325,6 +1452,8 @@ class InlineQueryResultVoice(JsonSerializable):
         json_dict = {'type': self.type, 'id': self.id, 'voice_url': self.voice_url, 'title': self.title}
         if self.caption:
             json_dict['caption'] = self.caption
+        if self.parse_mode:
+            json_dict['parse_mode'] = self.parse_mode
         if self.performer:
             json_dict['performer'] = self.performer
         if self.voice_duration:
@@ -1337,14 +1466,15 @@ class InlineQueryResultVoice(JsonSerializable):
 
 
 class InlineQueryResultDocument(JsonSerializable):
-    def __init__(self, id, title, document_url, mime_type, caption=None, description=None, reply_markup=None,
-                 input_message_content=None, thumb_url=None, thumb_width=None, thumb_height=None):
+    def __init__(self, id, title, document_url, mime_type, caption=None, parse_mode=None, description=None,
+                 reply_markup=None, input_message_content=None, thumb_url=None, thumb_width=None, thumb_height=None):
         self.type = 'document'
         self.id = id
         self.title = title
         self.document_url = document_url
         self.mime_type = mime_type
         self.caption = caption
+        self.parse_mode = parse_mode
         self.description = description
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
@@ -1357,6 +1487,8 @@ class InlineQueryResultDocument(JsonSerializable):
                      'mime_type': self.mime_type}
         if self.caption:
             json_dict['caption'] = self.caption
+        if self.parse_mode:
+            json_dict['parse_mode'] = self.parse_mode
         if self.description:
             json_dict['description'] = self.description
         if self.thumb_url:
@@ -1373,13 +1505,14 @@ class InlineQueryResultDocument(JsonSerializable):
 
 
 class InlineQueryResultLocation(JsonSerializable):
-    def __init__(self, id, title, latitude, longitude, reply_markup=None,
+    def __init__(self, id, title, latitude, longitude, live_period=None, reply_markup=None,
                  input_message_content=None, thumb_url=None, thumb_width=None, thumb_height=None):
         self.type = 'location'
         self.id = id
         self.title = title
         self.latitude = latitude
         self.longitude = longitude
+        self.live_period = live_period
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
         self.thumb_url = thumb_url
@@ -1389,6 +1522,8 @@ class InlineQueryResultLocation(JsonSerializable):
     def to_json(self):
         json_dict = {'type': self.type, 'id': self.id, 'latitude': self.latitude, 'longitude': self.longitude,
                      'title': self.title}
+        if self.live_period:
+            json_dict['live_period'] = self.live_period
         if self.thumb_url:
             json_dict['thumb_url'] = self.thumb_url
         if self.thumb_width:
@@ -1476,6 +1611,7 @@ class BaseInlineQueryResultCached(JsonSerializable):
         self.caption = None
         self.reply_markup = None
         self.input_message_content = None
+        self.parse_mode = None
         self.payload_dic = {}
 
     def to_json(self):
@@ -1492,12 +1628,14 @@ class BaseInlineQueryResultCached(JsonSerializable):
             json_dict['reply_markup'] = self.reply_markup.to_dic()
         if self.input_message_content:
             json_dict['input_message_content'] = self.input_message_content.to_dic()
+        if self.parse_mode:
+            json_dict['parse_mode'] = self.parse_mode
         return json.dumps(json_dict)
 
 
 class InlineQueryResultCachedPhoto(BaseInlineQueryResultCached):
-    def __init__(self, id, photo_file_id, title=None, description=None, caption=None, reply_markup=None,
-                 input_message_content=None):
+    def __init__(self, id, photo_file_id, title=None, description=None, caption=None, parse_mode=None,
+                 reply_markup=None, input_message_content=None):
         BaseInlineQueryResultCached.__init__(self)
         self.type = 'photo'
         self.id = id
@@ -1507,11 +1645,12 @@ class InlineQueryResultCachedPhoto(BaseInlineQueryResultCached):
         self.caption = caption
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
+        self.parse_mode = parse_mode
         self.payload_dic['photo_file_id'] = photo_file_id
 
 
 class InlineQueryResultCachedGif(BaseInlineQueryResultCached):
-    def __init__(self, id, gif_file_id, title=None, description=None, caption=None, reply_markup=None,
+    def __init__(self, id, gif_file_id, title=None, description=None, caption=None, parse_mode=None, reply_markup=None,
                  input_message_content=None):
         BaseInlineQueryResultCached.__init__(self)
         self.type = 'gif'
@@ -1522,12 +1661,13 @@ class InlineQueryResultCachedGif(BaseInlineQueryResultCached):
         self.caption = caption
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
+        self.parse_mode = parse_mode
         self.payload_dic['gif_file_id'] = gif_file_id
 
 
 class InlineQueryResultCachedMpeg4Gif(BaseInlineQueryResultCached):
-    def __init__(self, id, mpeg4_file_id, title=None, description=None, caption=None, reply_markup=None,
-                 input_message_content=None):
+    def __init__(self, id, mpeg4_file_id, title=None, description=None, caption=None, parse_mode=None,
+                 reply_markup=None, input_message_content=None):
         BaseInlineQueryResultCached.__init__(self)
         self.type = 'mpeg4_gif'
         self.id = id
@@ -1537,6 +1677,7 @@ class InlineQueryResultCachedMpeg4Gif(BaseInlineQueryResultCached):
         self.caption = caption
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
+        self.parse_mode = parse_mode
         self.payload_dic['mpeg4_file_id'] = mpeg4_file_id
 
 
@@ -1552,7 +1693,7 @@ class InlineQueryResultCachedSticker(BaseInlineQueryResultCached):
 
 
 class InlineQueryResultCachedDocument(BaseInlineQueryResultCached):
-    def __init__(self, id, document_file_id, title, description=None, caption=None, reply_markup=None,
+    def __init__(self, id, document_file_id, title, description=None, caption=None, parse_mode=None, reply_markup=None,
                  input_message_content=None):
         BaseInlineQueryResultCached.__init__(self)
         self.type = 'document'
@@ -1563,11 +1704,12 @@ class InlineQueryResultCachedDocument(BaseInlineQueryResultCached):
         self.caption = caption
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
+        self.parse_mode = parse_mode
         self.payload_dic['document_file_id'] = document_file_id
 
 
 class InlineQueryResultCachedVideo(BaseInlineQueryResultCached):
-    def __init__(self, id, video_file_id, title, description=None, caption=None, reply_markup=None,
+    def __init__(self, id, video_file_id, title, description=None, caption=None, parse_mode=None, reply_markup=None,
                  input_message_content=None):
         BaseInlineQueryResultCached.__init__(self)
         self.type = 'video'
@@ -1578,11 +1720,13 @@ class InlineQueryResultCachedVideo(BaseInlineQueryResultCached):
         self.caption = caption
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
+        self.parse_mode = parse_mode
         self.payload_dic['video_file_id'] = video_file_id
 
 
 class InlineQueryResultCachedVoice(BaseInlineQueryResultCached):
-    def __init__(self, id, voice_file_id, title, caption=None, reply_markup=None, input_message_content=None):
+    def __init__(self, id, voice_file_id, title, caption=None, parse_mode=None, reply_markup=None,
+                 input_message_content=None):
         BaseInlineQueryResultCached.__init__(self)
         self.type = 'voice'
         self.id = id
@@ -1591,11 +1735,12 @@ class InlineQueryResultCachedVoice(BaseInlineQueryResultCached):
         self.caption = caption
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
+        self.parse_mode = parse_mode
         self.payload_dic['voice_file_id'] = voice_file_id
 
 
 class InlineQueryResultCachedAudio(BaseInlineQueryResultCached):
-    def __init__(self, id, audio_file_id, caption=None, reply_markup=None, input_message_content=None):
+    def __init__(self, id, audio_file_id, caption=None, parse_mode=None, reply_markup=None, input_message_content=None):
         BaseInlineQueryResultCached.__init__(self)
         self.type = 'audio'
         self.id = id
@@ -1603,6 +1748,7 @@ class InlineQueryResultCachedAudio(BaseInlineQueryResultCached):
         self.caption = caption
         self.reply_markup = reply_markup
         self.input_message_content = input_message_content
+        self.parse_mode = parse_mode
         self.payload_dic['audio_file_id'] = audio_file_id
 
 
@@ -1779,7 +1925,7 @@ class ShippingOption(JsonSerializable):
     def add_price(self, *args):
         """
         Add LabeledPrice to ShippingOption
-        :param args: LabeledPrices 
+        :param args: LabeledPrices
         """
         for price in args:
             self.prices.append(price)
@@ -1788,7 +1934,7 @@ class ShippingOption(JsonSerializable):
         price_list = []
         for p in self.prices:
             price_list.append(p.to_dic())
-        json_dict = {'id': self.id, 'title': self.title, 'prices': price_list}
+        json_dict = json.dumps({'id': self.id, 'title': self.title, 'prices': price_list})
         return json_dict
 
 
@@ -1859,3 +2005,243 @@ class PreCheckoutQuery(JsonDeserializable):
         self.invoice_payload = invoice_payload
         self.shipping_option_id = shipping_option_id
         self.order_info = order_info
+
+
+# Stickers
+
+class StickerSet(JsonDeserializable):
+    @classmethod
+    def de_json(cls, json_string):
+        obj = cls.check_json(json_string)
+        name = obj['name']
+        title = obj['title']
+        contains_masks = obj['contains_masks']
+        stickers = []
+        for s in obj['stickers']:
+            stickers.append(Sticker.de_json(s))
+        return cls(name, title, contains_masks, stickers)
+
+    def __init__(self, name, title, contains_masks, stickers):
+        self.stickers = stickers
+        self.contains_masks = contains_masks
+        self.title = title
+        self.name = name
+
+
+class Sticker(JsonDeserializable):
+    @classmethod
+    def de_json(cls, json_string):
+        obj = cls.check_json(json_string)
+        file_id = obj['file_id']
+        width = obj['width']
+        height = obj['height']
+        thumb = None
+        if 'thumb' in obj:
+            thumb = PhotoSize.de_json(obj['thumb'])
+        emoji = obj.get('emoji')
+        set_name = obj.get('set_name')
+        mask_position = None
+        if 'mask_position' in obj:
+            mask_position = MaskPosition.de_json(obj['mask_position'])
+        file_size = obj.get('file_size')
+        return cls(file_id, width, height, thumb, emoji, set_name, mask_position, file_size)
+
+    def __init__(self, file_id, width, height, thumb, emoji, set_name, mask_position, file_size):
+        self.file_id = file_id
+        self.width = width
+        self.height = height
+        self.thumb = thumb
+        self.emoji = emoji
+        self.set_name = set_name
+        self.mask_position = mask_position
+        self.file_size = file_size
+
+
+class MaskPosition(JsonDeserializable, JsonSerializable):
+    @classmethod
+    def de_json(cls, json_string):
+        obj = cls.check_json(json_string)
+        point = obj['point']
+        x_shift = obj['x_shift']
+        y_shift = obj['y_shift']
+        scale = obj['scale']
+        return cls(point, x_shift, y_shift, scale)
+
+    def __init__(self, point, x_shift, y_shift, scale):
+        self.point = point
+        self.x_shift = x_shift
+        self.y_shift = y_shift
+        self.scale = scale
+
+    def to_json(self):
+        return json.dumps(self.to_dic())
+
+    def to_dic(self):
+        return {'point': self.point, 'x_shift': self.x_shift, 'y_shift': self.y_shift, 'scale': self.scale}
+
+
+# InputMedia
+
+class InputMedia(JsonSerializable):
+    def __init__(self, type, media, caption=None, parse_mode=None):
+        self.type = type
+        self.media = media
+        self.caption = caption
+        self.parse_mode = parse_mode
+
+        if util.is_string(self.media):
+            self._media_name = ''
+            self._media_dic = self.media
+        else:
+            self._media_name = util.generate_random_token()
+            self._media_dic = 'attach://{0}'.format(self._media_name)
+
+    def to_json(self):
+        return json.dumps(self.to_dic())
+
+    def to_dic(self):
+        ret = {'type': self.type, 'media': self._media_dic}
+        if self.caption:
+            ret['caption'] = self.caption
+        if self.parse_mode:
+            ret['parse_mode'] = self.parse_mode
+        return ret
+
+    def _convert_input_media(self):
+        if util.is_string(self.media):
+            return self.to_json(), None
+
+        return self.to_json(), {self._media_name: self.media}
+
+
+class InputMediaPhoto(InputMedia):
+    def __init__(self, media, caption=None, parse_mode=None):
+        super(InputMediaPhoto, self).__init__(type="photo", media=media, caption=caption, parse_mode=parse_mode)
+
+    def to_dic(self):
+        ret = super(InputMediaPhoto, self).to_dic()
+        return ret
+
+
+class InputMediaVideo(InputMedia):
+    def __init__(self, media, thumb=None, caption=None, parse_mode=None, width=None, height=None, duration=None,
+                 supports_streaming=None):
+        super(InputMediaVideo, self).__init__(type="video", media=media, caption=caption, parse_mode=parse_mode)
+        self.thumb = thumb
+        self.width = width
+        self.height = height
+        self.duration = duration
+        self.supports_streaming = supports_streaming
+
+    def to_dic(self):
+        ret = super(InputMediaVideo, self).to_dic()
+        if self.thumb:
+            ret['thumb'] = self.thumb
+        if self.width:
+            ret['width'] = self.width
+        if self.height:
+            ret['height'] = self.height
+        if self.duration:
+            ret['duration'] = self.duration
+        if self.supports_streaming:
+            ret['supports_streaming'] = self.supports_streaming
+        return ret
+
+
+class InputMediaAnimation(InputMedia):
+    def __init__(self, media, thumb=None, caption=None, parse_mode=None, width=None, height=None, duration=None):
+        super(InputMediaAnimation, self).__init__(type="animation", media=media, caption=caption, parse_mode=parse_mode)
+        self.thumb = thumb
+        self.width = width
+        self.height = height
+        self.duration = duration
+
+    def to_dic(self):
+        ret = super(InputMediaAnimation, self).to_dic()
+        if self.thumb:
+            ret['thumb'] = self.thumb
+        if self.width:
+            ret['width'] = self.width
+        if self.height:
+            ret['height'] = self.height
+        if self.duration:
+            ret['duration'] = self.duration
+        return ret
+
+
+class InputMediaAudio(InputMedia):
+    def __init__(self, media, thumb=None, caption=None, parse_mode=None, duration=None, performer=None, title=None):
+        super(InputMediaAudio, self).__init__(type="audio", media=media, caption=caption, parse_mode=parse_mode)
+        self.thumb = thumb
+        self.duration = duration
+        self.performer = performer
+        self.title = title
+
+    def to_dic(self):
+        ret = super(InputMediaAudio, self).to_dic()
+        if self.thumb:
+            ret['thumb'] = self.thumb
+        if self.duration:
+            ret['duration'] = self.duration
+        if self.performer:
+            ret['performer'] = self.performer
+        if self.title:
+            ret['title'] = self.title
+        return ret
+
+
+class InputMediaDocument(InputMedia):
+    def __init__(self, media, thumb=None, caption=None, parse_mode=None):
+        super(InputMediaDocument, self).__init__(type="document", media=media, caption=caption, parse_mode=parse_mode)
+        self.thumb = thumb
+
+    def to_dic(self):
+        ret = super(InputMediaDocument, self).to_dic()
+        if self.thumb:
+            ret['thumb'] = self.thumb
+        return ret
+
+
+class PollOption(JsonSerializable, JsonDeserializable):
+    @classmethod
+    def de_json(cls, json_type):
+        obj = cls.check_json(json_type)
+        text = obj['text']
+        voter_count = int(obj['voter_count'])
+        option = cls(text)
+        option.voter_count = voter_count
+        return option
+
+    def __init__(self, text):
+        self.text = text
+        self.voter_count = 0
+
+    def to_json(self):
+        return json.dumps(self.text)
+
+
+class Poll(JsonDeserializable):
+    @classmethod
+    def de_json(cls, json_type):
+        obj = cls.check_json(json_type)
+        poll_id = obj['id']
+        question = obj['question']
+        poll = cls(question)
+        options = []
+        for opt in obj['options']:
+            options.append(PollOption.de_json(opt))
+        poll.options = options
+        is_closed = obj['is_closed']
+        poll.id = poll_id
+        poll.is_closed = is_closed
+        return poll
+
+    def __init__(self, question):
+        self.options = []
+        self.question = question
+
+    def add(self, option):
+        if type(option) is PollOption:
+            self.options.append(option)
+        else:
+            self.options.append(PollOption(option))
